@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1769d2">
+  <meta name="description" content="A friendly offline spelling practice game.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/app-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./assets/app-icon.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Word Ninja</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="wordmark" href="#home" data-nav="home" aria-label="Word Ninja home"><span class="brand-mark" aria-hidden="true">N</span><span>Word Ninja</span></a>
+      <div class="topbar-actions"><span class="star-count" aria-label="Stars"><span aria-hidden="true">★</span> <b id="star-count">0</b></span><button class="icon-button" type="button" data-nav="wardrobe" aria-label="Open ninja wardrobe" title="Wardrobe">✦</button></div>
+    </header>
+
+    <div id="app-message" class="app-message" role="status" aria-live="polite" hidden></div>
+    <div id="update-banner" class="update-banner" hidden><span>A Word Ninja update is ready.</span><button class="button button-small" id="apply-update" type="button">Update between games</button></div>
+    <div id="celebration-effects" class="celebration-effects" aria-hidden="true" hidden>
+      <span class="celebration-bolt">⚡</span>
+      <span class="glitter glitter-one">✦</span><span class="glitter glitter-two">★</span>
+      <span class="glitter glitter-three">✧</span><span class="glitter glitter-four">✦</span>
+      <span class="glitter glitter-five">★</span><span class="glitter glitter-six">✧</span>
+      <span class="glitter glitter-seven">✦</span><span class="glitter glitter-eight">★</span>
+      <span class="firework-launcher firework-launcher-left"><i></i></span>
+      <span class="firework-launcher firework-launcher-right"><i></i></span>
+      <span class="firework-launcher firework-launcher-center"><i></i></span>
+      <span class="firework firework-left"><i class="firework-rocket"></i><i class="firework-burst"><b></b><i style="--ray-angle:0deg"></i><i style="--ray-angle:30deg"></i><i style="--ray-angle:60deg"></i><i style="--ray-angle:90deg"></i><i style="--ray-angle:120deg"></i><i style="--ray-angle:150deg"></i><i style="--ray-angle:180deg"></i><i style="--ray-angle:210deg"></i><i style="--ray-angle:240deg"></i><i style="--ray-angle:270deg"></i><i style="--ray-angle:300deg"></i><i style="--ray-angle:330deg"></i></i></span>
+      <span class="firework firework-right"><i class="firework-rocket"></i><i class="firework-burst"><b></b><i style="--ray-angle:0deg"></i><i style="--ray-angle:30deg"></i><i style="--ray-angle:60deg"></i><i style="--ray-angle:90deg"></i><i style="--ray-angle:120deg"></i><i style="--ray-angle:150deg"></i><i style="--ray-angle:180deg"></i><i style="--ray-angle:210deg"></i><i style="--ray-angle:240deg"></i><i style="--ray-angle:270deg"></i><i style="--ray-angle:300deg"></i><i style="--ray-angle:330deg"></i></i></span>
+      <span class="firework firework-center"><i class="firework-rocket"></i><i class="firework-burst"><b></b><i style="--ray-angle:0deg"></i><i style="--ray-angle:30deg"></i><i style="--ray-angle:60deg"></i><i style="--ray-angle:90deg"></i><i style="--ray-angle:120deg"></i><i style="--ray-angle:150deg"></i><i style="--ray-angle:180deg"></i><i style="--ray-angle:210deg"></i><i style="--ray-angle:240deg"></i><i style="--ray-angle:270deg"></i><i style="--ray-angle:300deg"></i><i style="--ray-angle:330deg"></i></i></span>
+    </div>
+
+    <main id="main-content">
+      <section id="view-home" class="view active" aria-labelledby="home-title">
+        <div class="home-layout">
+          <div class="home-main">
+            <div class="mascot-stage home-mascot-stage">
+              <div class="mascot" data-mood="idle" data-accessory="headband" role="img" aria-label="Nix the spelling ninja is ready">
+                <span class="mascot-trail" aria-hidden="true"></span><span class="mascot-scarf" aria-hidden="true"></span><span class="mascot-helmet" aria-hidden="true"></span><span class="mascot-headband" aria-hidden="true"></span><span class="mascot-shades" aria-hidden="true"></span><span class="mascot-face" aria-hidden="true"><i></i><i></i></span><span class="mascot-body" aria-hidden="true"></span><span class="mascot-feet" aria-hidden="true"></span>
+              </div>
+              <div class="mascot-speech"><span class="eyebrow">NIX SAYS</span><p id="mascot-message">Ready when you are!</p></div>
+            </div>
+            <div class="welcome-copy"><p class="eyebrow">YOUR SPELLING DOJO</p><h1 id="home-title">Let’s practise!</h1><p class="subcopy" id="home-subtitle">Your next great spelling adventure starts here.</p></div>
+            <div class="mode-choice" id="mode-choice">
+              <button class="mode-button mode-typing" type="button" data-start-mode="typing"><span class="mode-icon" aria-hidden="true">⌨</span><span><strong>Type the words</strong><small>Use your ninja letter keys</small></span><span class="mode-arrow" aria-hidden="true">→</span></button>
+              <button class="mode-button mode-arcade" type="button" data-start-mode="arcade"><span class="mode-icon" aria-hidden="true">✦</span><span><strong>Spelling Arcade</strong><small>Aim, shoot and spell</small></span><span class="mode-arrow" aria-hidden="true">→</span></button>
+            </div>
+            <button class="resume-button" id="resume-session" type="button" hidden>Continue your saved game <span aria-hidden="true">→</span></button>
+            <div class="saved-games" id="saved-games" aria-label="Saved spelling games"></div>
+          </div>
+          <aside class="home-side">
+            <section class="weekly-panel" aria-labelledby="weekly-title">
+              <div class="panel-heading"><div><p class="eyebrow">THIS WEEK</p><h2 id="weekly-title">Your word list</h2></div><span class="weekly-sticker" aria-hidden="true">Aa</span></div>
+              <p id="weekly-summary" class="weekly-summary">No words yet. Ask a parent to add your list.</p>
+              <div class="progress-track" aria-hidden="true"><span id="weekly-progress-bar"></span></div>
+              <p id="weekly-progress-label" class="progress-label">0 weekly words practised</p>
+              <ul id="home-word-preview" class="word-preview"></ul>
+              <button class="text-button" type="button" data-nav="wardrobe">Open your ninja collection <span aria-hidden="true">→</span></button>
+            </section>
+            <button class="parent-entry" type="button" data-nav="pin"><span aria-hidden="true">⚙</span> Parent area</button>
+          </aside>
+        </div>
+      </section>
+
+      <section id="view-practice" class="view practice-view" aria-labelledby="practice-title" hidden>
+        <header class="practice-header">
+          <button class="icon-button back-button leave-game-button" id="leave-practice" type="button" aria-label="Leave game">← <span>Leave</span></button>
+          <div class="practice-progress"><p class="eyebrow" id="practice-kind">WEEKLY WORD</p><h1 id="practice-title">Word 1 of 1</h1></div>
+          <div class="practice-tools"><button class="icon-button" id="pause-game" type="button" aria-label="Pause game" title="Pause">Ⅱ</button></div>
+        </header>
+        <div class="practice-content">
+          <div class="practice-coach-row">
+            <div class="practice-mascot" aria-hidden="true"><div class="practice-mascot-visual"><div class="mascot" data-mood="idle" data-accessory="headband"><span class="mascot-trail"></span><span class="mascot-scarf"></span><span class="mascot-helmet"></span><span class="mascot-headband"></span><span class="mascot-shades"></span><span class="mascot-face"><i></i><i></i></span><span class="mascot-body"></span><span class="mascot-feet"></span></div></div></div>
+            <div id="prompt-status" class="prompt-status" role="status" aria-live="polite">Listen carefully, then build the word.</div>
+          </div>
+                    <div id="correction-model" class="correction-model" hidden>Word spelling: <strong></strong></div>
+          <section id="typing-panel" class="typing-panel" aria-label="Typing practice">
+            <div class="answer-zone"><p class="eyebrow">YOUR SPELLING</p><div class="answer-line"><button class="icon-button replay-word-button" type="button" data-replay-word aria-label="Replay spoken word" title="Replay word"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"/></svg></button><div id="typed-answer" class="typed-answer" role="img" aria-label="Your spelling is empty"></div><span class="answer-line-spacer" aria-hidden="true"></span></div><p id="typing-status" class="answer-hint">Build your answer with the letter keys. We’ll check when you pause.</p></div>
+            <div id="letter-keyboard" class="letter-keyboard" aria-label="Spelling letter keyboard"></div>
+            <button class="button button-primary finish-button" id="typing-finished" type="button" disabled>Finished <span aria-hidden="true">✓</span></button>
+          </section>
+          <section id="arcade-panel" class="arcade-panel" aria-label="Spelling Arcade" tabindex="0" hidden>
+            <div class="arcade-answer-line"><span class="eyebrow">YOUR SPELLING</span><div class="answer-line"><button class="icon-button replay-word-button" type="button" data-replay-word aria-label="Replay spoken word" title="Replay word"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"/></svg></button><strong id="arcade-answer" aria-live="polite"></strong><span class="answer-line-spacer" aria-hidden="true"></span></div></div>
+            <div class="arcade-field" aria-label="Cannon game playfield">
+              <!-- Unused; stops a cached pre-v31 arcade.js from throwing until it updates. -->
+              <span class="delete-target" hidden></span><span class="finished-target" hidden></span>
+              <div class="falling-letters" aria-hidden="true"></div><div class="projectiles" aria-hidden="true"></div><div class="impact-layer" aria-hidden="true"></div><div class="cannon" aria-hidden="true"><span></span></div>
+            </div>
+            <div class="arcade-controls" aria-label="Cannon controls">
+              <button class="control-button" type="button" data-hold="left" aria-label="Move cannon left">←<small>Left</small></button>
+              <button class="control-button shoot-control" type="button" data-shoot aria-label="Shoot letter">✦<small>Shoot</small></button>
+              <button class="control-button" type="button" data-hold="right" aria-label="Move cannon right">→<small>Right</small></button>
+              <button class="shift-toggle" type="button" data-shift aria-pressed="false">⇧ Shift: off</button>
+            </div>
+            <p class="arcade-instructions">Shoot the next letter of the word. Wrong letters never join your spelling.</p>
+          </section>
+          <section id="feedback-panel" class="feedback-panel" role="status" aria-live="polite" hidden>
+            <div class="feedback-title"><span id="feedback-icon" aria-hidden="true">✦</span><h2 id="feedback-heading">Correct!</h2></div>
+            <div class="answer-comparison"><div><span>Your answer</span><strong id="feedback-answer"></strong></div><div id="feedback-target-column"><span>Word spelling</span><strong id="feedback-target"></strong></div></div>
+            <p id="feedback-detail"></p>
+            <div class="feedback-actions"><button class="button button-primary" id="feedback-next" type="button">Next word <span aria-hidden="true">→</span></button><button class="button button-secondary" id="feedback-fix" type="button" hidden>Try again</button><button class="text-button" id="feedback-skip" type="button" hidden>Keep practising next time</button></div>
+          </section>
+          <section id="pause-panel" class="pause-panel" role="status" hidden><span aria-hidden="true">Ⅱ</span><h2>Taking a little pause</h2><button class="button button-primary" id="resume-game" type="button">Ready to play</button></section>
+        </div>
+      </section>
+
+      <section id="view-results" class="view results-view" aria-labelledby="results-title" hidden>
+        <div class="results-mascot"><div class="mascot" data-mood="celebrating-big" data-accessory="headband" aria-hidden="true"><span class="mascot-trail"></span><span class="mascot-scarf"></span><span class="mascot-helmet"></span><span class="mascot-headband"></span><span class="mascot-shades"></span><span class="mascot-face"><i></i><i></i></span><span class="mascot-body"></span><span class="mascot-feet"></span></div></div>
+        <p class="eyebrow">DOJO COMPLETE</p><h1 id="results-title">You did it!</h1><div class="results-stars" id="results-stars">★ +0 stars</div><button class="button button-primary" id="results-home" type="button">Back to home</button>
+      </section>
+
+      <section id="view-pin" class="view gate-view" aria-labelledby="pin-title" hidden>
+        <button class="icon-button view-back" type="button" data-nav="home" aria-label="Back to home">←</button><div class="gate-symbol" aria-hidden="true">⌑</div><p class="eyebrow">GROWN-UPS ONLY</p><h1 id="pin-title">Parent area</h1><p>Enter your parent PIN to continue.</p><div class="pin-dots" id="pin-dots" aria-label="No PIN digits entered"><i></i><i></i><i></i><i></i></div><p id="pin-error" class="form-message" role="alert"></p><div class="pin-keypad" id="pin-keypad" aria-label="PIN keypad"></div><button class="text-button" type="button" data-nav="home">Cancel</button>
+      </section>
+
+      <section id="view-parent" class="view parent-view" aria-labelledby="parent-title" hidden>
+        <header class="section-header"><button class="icon-button" type="button" id="lock-parent" aria-label="Lock parent area">←</button><div><p class="eyebrow">GROWN-UPS ONLY</p><h1 id="parent-title">Word lists & settings</h1></div><button class="button button-small button-secondary" id="parent-done" type="button">Done</button></header>
+        <div class="parent-grid">
+          <section class="parent-section wordset-section" aria-labelledby="sets-heading"><div class="parent-section-heading"><div><p class="eyebrow">WEEKLY LISTS</p><h2 id="sets-heading">Word sets</h2></div><button class="button button-small button-primary" id="new-set" type="button">+ New set</button></div><div id="set-list" class="set-list"></div></section>
+          <section class="parent-section editor-section" aria-labelledby="editor-heading"><p class="eyebrow">LIST EDITOR</p><h2 id="editor-heading">Create a word set</h2><form id="set-form" novalidate><label for="set-title">List name</label><input id="set-title" maxlength="48" required placeholder="e.g. Week beginning 10 May"><label for="test-date">Test date <span>(optional)</span></label><input id="test-date" type="date"><label for="word-lines">Words, one per line</label><textarea id="word-lines" rows="8" autocapitalize="none" spellcheck="false" placeholder="Monday&#10;beautiful&#10;because"></textarea><p class="field-help">Use English letters only. Capital letters are kept. Duplicate spellings, including capitalised variants, need a quick check.</p><div id="word-details" class="word-details"></div><p id="set-form-message" class="form-message" role="alert"></p><div class="form-actions"><button class="button button-primary" id="save-set" type="submit">Save list</button><button class="button button-secondary" id="preview-list-speech" type="button">Preview speech</button><button class="button button-secondary" id="activate-set" type="button" hidden>Make this week’s list</button><button class="text-button" id="cancel-edit-set" type="button" hidden>Cancel editing</button></div></form></section>
+          <section class="parent-section statistics-section" aria-labelledby="stats-heading"><p class="eyebrow">KEEPING TRACK</p><h2 id="stats-heading">Practice history</h2><p class="field-help">Typing recall and arcade letter choices are tracked separately. Copying after a hint is supported practice, not independent recall.</p><div class="table-scroll"><table><thead><tr><th>Word</th><th>Mode</th><th>First tries</th><th>Supported</th><th>Later recall</th><th>Last practised</th></tr></thead><tbody id="stats-table"></tbody></table></div></section>
+          <section class="parent-section settings-section" aria-labelledby="settings-heading"><p class="eyebrow">MAKE IT YOURS</p><h2 id="settings-heading">Practice settings</h2><div class="settings-grid"><label for="voice-select">English voice<select id="voice-select"></select></label><label for="speech-rate">Speaking speed <span id="speech-rate-label">0.86</span><input id="speech-rate" type="range" min="0.65" max="1.15" step="0.05"></label><button class="button button-secondary" id="test-speech" type="button">Check speech</button><label for="effects-volume">Effects volume <input id="effects-volume" type="range" min="0" max="1" step="0.1"></label><label class="check-setting"><input id="effects-muted" type="checkbox"> Mute sound effects</label><label class="check-setting"><input id="vibration" type="checkbox"> Vibration</label><p id="vibration-note" class="field-help"></p><label class="check-setting"><input id="reduced-motion" type="checkbox"> Reduce movement</label><label for="arcade-speed">Letter speed <span id="arcade-speed-label">26</span><input id="arcade-speed" type="range" min="18" max="48" step="2"></label><label for="arcade-density">Falling letters<select id="arcade-density"><option value="3">3 letters</option><option value="4">4 letters</option></select></label></div><p id="speech-check-result" class="form-message" role="status"></p><p class="field-help">Speech voices are provided by this device. Test the chosen voice in aeroplane mode on the iPhone before relying on offline dictation.</p></section>
+          <section class="parent-section backup-section" aria-labelledby="backup-heading"><p class="eyebrow">KEEP A COPY</p><h2 id="backup-heading">Backup & restore</h2><p class="field-help">Backups include word lists, practice history, settings and rewards. Browser storage can be cleared by the device. Changing website address creates a separate storage location.</p><div class="backup-actions"><button class="button button-secondary" id="export-backup" type="button">Export backup</button><label class="button button-secondary file-button" for="import-backup">Choose backup<input id="import-backup" type="file" accept="application/json,.json"></label></div><p id="backup-message" class="form-message" role="status"></p><button class="text-button" id="speech-capability" type="button">Check speech availability</button></section>
+        </div>
+      </section>
+
+      <section id="view-wardrobe" class="view wardrobe-view" aria-labelledby="wardrobe-title" hidden>
+        <header class="section-header"><button class="icon-button" type="button" data-nav="home" aria-label="Back to home">←</button><div><p class="eyebrow">YOUR COLLECTION</p><h1 id="wardrobe-title">Nix’s wardrobe</h1></div><span class="star-count"><span aria-hidden="true">★</span> <b id="wardrobe-stars">0</b></span></header>
+        <div class="wardrobe-layout"><div class="wardrobe-preview"><div class="mascot" data-mood="idle" role="img" aria-label="Nix wearing your chosen outfit"><span class="mascot-trail"></span><span class="mascot-scarf"></span><span class="mascot-helmet"></span><span class="mascot-headband"></span><span class="mascot-shades"></span><span class="mascot-face"><i></i><i></i></span><span class="mascot-body"></span><span class="mascot-feet"></span></div><p id="equipped-label">Nix’s outfit</p></div><div class="wardrobe-categories" id="accessory-grid"></div></div>
+      </section>
+    </main>
+    <footer class="app-footer"><span>Word Ninja <span id="save-indicator" aria-live="polite"></span></span><span id="offline-indicator">Offline setup not confirmed</span></footer>
+  </div>
+  <dialog id="leave-game-dialog" class="leave-dialog" aria-labelledby="leave-dialog-title">
+    <button class="icon-button leave-dialog-close" type="button" data-leave-action="stay" aria-label="Keep playing">×</button>
+    <p class="eyebrow">YOUR GAME IS SAVED</p>
+    <h2 id="leave-dialog-title">Taking a break?</h2>
+    <p id="leave-dialog-description">Your place and answers will stay saved. You can come back any time.</p>
+    <div class="leave-dialog-actions">
+      <button class="button button-primary" type="button" data-leave-action="stay">Keep playing</button>
+      <button class="button button-secondary" id="switch-game-style" type="button" data-leave-action="switch">Switch game style</button>
+      <button class="button button-secondary" type="button" data-leave-action="home">Go to home</button>
+      <button class="text-button" type="button" data-leave-action="words">Choose another word list</button>
+    </div>
+  </dialog>
+  <dialog id="confirm-dialog" class="leave-dialog" aria-labelledby="confirm-message">
+    <form method="dialog">
+      <p id="confirm-message" class="confirm-message"></p>
+      <div class="leave-dialog-actions">
+        <button class="button button-primary" id="confirm-yes" type="submit" value="yes">Yes</button>
+        <button class="button button-secondary" type="submit" value="no">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
