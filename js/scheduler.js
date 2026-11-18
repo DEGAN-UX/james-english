@@ -35,6 +35,20 @@ export function createSessionPlan({ set, words, stats, reviewBudget, random = Ma
   return { queue, nextBudget, plannedAt: new Date().toISOString(), mode, setId: set.id };
 }
 
+// Arcade difficulty per word: 6 letters on screen the first time, 7 after a good round, 8 after another.
+export const ARCADE_LETTERS_BASE = 6;
+export const ARCADE_MAX_LEVEL = 2;
+export const ARCADE_WRONG_SHOT_LIMIT = 4;
+
+export function arcadeLetterCount(level = 0) {
+  return ARCADE_LETTERS_BASE + Math.max(0, Math.min(ARCADE_MAX_LEVEL, Number(level) || 0));
+}
+
+export function nextArcadeLevel(level = 0, wrongShots = 0) {
+  const current = Math.max(0, Math.min(ARCADE_MAX_LEVEL, Number(level) || 0));
+  return wrongShots < ARCADE_WRONG_SHOT_LIMIT ? Math.min(ARCADE_MAX_LEVEL, current + 1) : current;
+}
+
 export function nextRequiredIndex(answer, target) {
   const typed = [...answer];
   const expected = [...target];

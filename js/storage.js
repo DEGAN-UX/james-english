@@ -21,7 +21,7 @@ export function createInitialState() {
     ownedAccessories: Object.values(DEFAULT_EQUIPMENT),
     equippedItems: { ...DEFAULT_EQUIPMENT },
     equippedAccessory: 'headband',
-    settings: { voiceURI: '', voiceName: '', voiceLang: 'en-GB', rate: 0.86, effectsVolume: 0.4, effectsMuted: false, vibration: true, reducedMotion: false, arcadeSpeed: 26, arcadeDensity: 4 },
+    settings: { voiceURI: '', voiceName: '', voiceLang: 'en-GB', rate: 0.86, effectsVolume: 0.4, effectsMuted: false, vibration: true, reducedMotion: false, arcadeSpeed: 26, arcadeMaxLetters: 8 },
     updatedAt: new Date().toISOString()
   };
 }

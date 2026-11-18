@@ -1,6 +1,6 @@
 import { StateStore, createInitialState, validateBackup } from './storage.js';
 import { alignLetters, canAutoConfirmAnswer, classifyAnswer, validateWord } from './spelling.js';
-import { createSessionPlan } from './scheduler.js';
+import { arcadeLetterCount, createSessionPlan, nextArcadeLevel } from './scheduler.js';
 import { ACCESSORIES, DEFAULT_EQUIPMENT, WARDROBE_SLOTS, rewardForEncounter, unlockForStars } from './rewards.js';
 import { AudioCoach } from './audio.js';
 import { hapticsSupport, pulse } from './haptics.js';
@@ -137,6 +137,7 @@ async function initialize() {
       arcade.setShift(false);
       renderShiftToggle();
       if (letter !== expected) {
+        encounter.wrongShots = (encounter.wrongShots || 0) + 1;
         const sameLetterOtherCase = expected && letter.toLocaleLowerCase('en-GB') === expected.toLocaleLowerCase('en-GB');
         document.querySelector('#prompt-status').textContent = sameLetterOtherCase ? 'Nearly! Check the capital letter.' : 'Your answer stays hidden until you finish.';
         return;
@@ -297,7 +298,7 @@ function renderStats() {
 
 function renderSettings() {
   const settings = state.settings;
-  settings.arcadeDensity = Number(settings.arcadeDensity) <= 3 ? 3 : 4;
+  settings.arcadeMaxLetters = [6, 7, 8].includes(Number(settings.arcadeMaxLetters)) ? Number(settings.arcadeMaxLetters) : 8;
   const voiceSelect = document.querySelector('#voice-select');
   if (voiceSelect) refreshVoiceOptions();
   setValue('#speech-rate', settings.rate ?? 0.86);
@@ -313,7 +314,7 @@ function renderSettings() {
   }[hapticsSupport()];
   setValue('#arcade-speed', settings.arcadeSpeed ?? 26);
   setValue('#arcade-speed-label', String(settings.arcadeSpeed ?? 26));
-  setValue('#arcade-density', settings.arcadeDensity ?? 5);
+  setValue('#arcade-max-letters', settings.arcadeMaxLetters);
 }
 
 function refreshVoiceOptions() {
@@ -560,7 +561,7 @@ function openPractice({ speak = false } = {}) {
   displayView('practice');
   if (isTyping) arcade.pause();
   else {
-    arcade.start(encounter.target, encounter.answer);
+    arcade.start(encounter.target, encounter.answer, { letterCount: arcadeLetterCount(state.stats[`${encounter.wordId}:arcade`]?.arcadeLevel) });
     arcade.pause();
   }
   document.querySelector('#pause-game').disabled = false;
@@ -728,6 +729,7 @@ async function submitAnswer() {
   }
 
   encounter.status = 'complete';
+  if (mode === 'arcade') stats.arcadeLevel = nextArcadeLevel(stats.arcadeLevel, encounter.wrongShots || 0);
   let feedbackKind = 'independent';
   if (encounter.laterRecall && !wasRevealed) {
     stats.laterRecallSuccesses += 1;
@@ -1358,7 +1360,7 @@ document.querySelector('#arcade-speed').addEventListener('input', event => {
   document.querySelector('#arcade-speed-label').textContent = String(state.settings.arcadeSpeed);
   persist({ debounce: true });
 });
-document.querySelector('#arcade-density').addEventListener('change', event => updatePreference('arcadeDensity', Number(event.target.value)));
+document.querySelector('#arcade-max-letters').addEventListener('change', event => updatePreference('arcadeMaxLetters', Number(event.target.value)));
 window.addEventListener('voiceschanged', refreshVoiceOptions);
 if ('speechSynthesis' in globalThis) speechSynthesis.addEventListener?.('voiceschanged', refreshVoiceOptions);
 

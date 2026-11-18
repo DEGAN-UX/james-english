@@ -1,4 +1,4 @@
-const CACHE_NAME = 'word-ninja-shell-v41';
+const CACHE_NAME = 'word-ninja-shell-v42';
 const APP_ASSETS = [
   './',
   './index.html',
@@ -12,6 +12,8 @@ const APP_ASSETS = [
   './js/haptics.js',
   './js/keyboard.js',
   './js/arcade.js',
+  './js/invaders.js',
+  './js/starfield.js',
   './js/rewards.js',
   './js/mascot.js',
   './assets/app-icon.svg',
