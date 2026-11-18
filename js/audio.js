@@ -1,5 +1,5 @@
 const LETTER_NAMES = {
-  a: 'ay', b: 'bee', c: 'see', d: 'dee', e: 'ee', f: 'eff', g: 'gee', h: 'aitch',
+  a: 'eigh', b: 'bee', c: 'see', d: 'dee', e: 'ee', f: 'eff', g: 'gee', h: 'aitch',
   i: 'eye', j: 'jay', k: 'kay', l: 'ell', m: 'em', n: 'en', o: 'oh', p: 'pee',
   q: 'cue', r: 'ar', s: 'ess', t: 'tee', u: 'you', v: 'vee', w: 'double you',
   x: 'ex', y: 'why', z: 'zed'
@@ -48,6 +48,8 @@ export class AudioCoach {
     this.aborters = new Set();
     this.wordToken = 0;
     this.watchdogBaseMs = 2500;
+    this.events = [];
+    this.voiceMode = 'selected';
     this.context = null;
     if (this.speechEnabled) {
       speechSynthesis.addEventListener('voiceschanged', () => this.refreshVoices());
@@ -83,7 +85,13 @@ export class AudioCoach {
       let silent = false;
       for (const text of sequence) {
         if (token !== this.wordToken) throw supersededError();
-        if (await this.say(text, rate, token) === 'silent') silent = true;
+        let outcome = 'retry';
+        for (let attempt = 0; outcome === 'retry' && attempt < 3; attempt += 1) {
+          if (attempt) await new Promise(resolve => setTimeout(resolve, 120));
+          if (token !== this.wordToken) throw supersededError();
+          outcome = await this.say(text, rate, token, attempt);
+        }
+        if (outcome === 'silent' || outcome === 'retry') silent = true;
       }
       if (token !== this.wordToken) throw supersededError();
       // True when the browser never confirmed it started speaking, so the app can hint at Replay.
@@ -91,12 +99,31 @@ export class AudioCoach {
     })();
   }
 
-  createUtterance(text, rate) {
+  note(message) {
+    this.events.push(`${(performance.now() / 1000).toFixed(1)}s ${message}`);
+    if (this.events.length > 14) this.events.shift();
+  }
+
+  // One line a parent can read out when sound fails.
+  diagnostics() {
+    if (!this.speechEnabled) return 'This browser has no speech synthesis.';
+    const engine = ['speaking', 'pending', 'paused'].filter(flag => speechSynthesis[flag]).join('+') || 'idle';
+    const voice = this.selectedVoice ? `${this.selectedVoice.name} (${this.selectedVoice.lang})` : 'none, using the default';
+    const audio = this.context ? this.context.state : 'not started';
+    return `Voices: ${this.voices.length} · using ${voice} (${this.voiceMode} setting) · engine ${engine} · effects audio ${audio} · recent: ${this.events.slice(-8).join('; ') || 'nothing yet'}`;
+  }
+
+  // Voice settings to try in turn; a browser that stays silent with one often speaks with another.
+  voiceOrder() {
+    return [this.voiceMode, ...['selected', 'default', 'us'].filter(mode => mode !== this.voiceMode)];
+  }
+
+  createUtterance(text, rate, mode = this.voiceMode) {
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = this.selectedVoice?.lang || 'en-GB';
+    utterance.lang = mode === 'us' ? 'en-US' : this.selectedVoice?.lang || 'en-GB';
     utterance.rate = rate;
     try {
-      if (this.selectedVoice) utterance.voice = this.selectedVoice;
+      if (mode === 'selected' && this.selectedVoice) utterance.voice = this.selectedVoice;
     } catch {
       // A stale voice object is not fatal; the browser default still speaks.
     }
@@ -104,9 +131,10 @@ export class AudioCoach {
   }
 
   // Resolves when the utterance ends, or when a watchdog decides it must have (some browsers never fire onend).
-  say(text, rate, token) {
+  say(text, rate, token, attempt = 0) {
     return new Promise((resolve, reject) => {
-      const utterance = this.createUtterance(text, rate);
+      const mode = this.voiceOrder()[attempt] || this.voiceMode;
+      const utterance = this.createUtterance(text, rate, mode);
       this.live.add(utterance);
       let settled = false;
       let started = false;
@@ -114,6 +142,7 @@ export class AudioCoach {
         if (settled) return;
         settled = true;
         clearTimeout(watchdog);
+        clearTimeout(startCheck);
         this.live.delete(utterance);
         this.aborters.delete(abort);
         settle(value);
@@ -121,12 +150,25 @@ export class AudioCoach {
       const abort = () => finish(reject, supersededError());
       const watchdog = setTimeout(() => {
         if (token === this.wordToken && speechSynthesis.speaking) speechSynthesis.cancel();
+        this.note(`gave up waiting for "${text.slice(0, 12)}" (${started ? 'it had started' : 'it never started'})`);
         finish(resolve, started ? 'timeout' : 'silent');
       }, this.watchdogBaseMs + (text.length * 130) / Math.max(0.5, rate));
+      // A speech engine that is stuck accepts speak() but never starts; one fresh attempt usually frees it.
+      const startCheck = setTimeout(() => {
+        if (started || settled || attempt >= 2 || token !== this.wordToken) return;
+        this.note(`no start for "${text.slice(0, 12)}" with ${mode} voice, trying another`);
+        if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+        finish(resolve, 'retry');
+      }, Math.min(1800, this.watchdogBaseMs / 2));
       this.aborters.add(abort);
-      utterance.onstart = () => { started = true; };
-      utterance.onend = () => finish(resolve, 'ended');
+      utterance.onstart = () => {
+        started = true;
+        if (mode !== this.voiceMode) this.voiceMode = mode;
+        this.note(`started "${text.slice(0, 12)}" with ${mode} voice`);
+      };
+      utterance.onend = () => { this.note(`finished "${text.slice(0, 12)}"`); finish(resolve, 'ended'); };
       utterance.onerror = event => {
+        this.note(`error ${event.error} for "${text.slice(0, 12)}"`);
         const interrupted = event.error === 'canceled' || event.error === 'interrupted';
         if (interrupted && token !== this.wordToken) return finish(reject, supersededError());
         const message = interrupted

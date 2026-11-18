@@ -1,4 +1,4 @@
-const CACHE_NAME = 'word-ninja-shell-v34';
+const CACHE_NAME = 'word-ninja-shell-v41';
 const APP_ASSETS = [
   './',
   './index.html',

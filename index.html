@@ -91,10 +91,12 @@
               <div class="falling-letters" aria-hidden="true"></div><div class="projectiles" aria-hidden="true"></div><div class="impact-layer" aria-hidden="true"></div><div class="cannon" aria-hidden="true"><span></span></div>
             </div>
             <div class="arcade-controls" aria-label="Cannon controls">
-              <button class="control-button" type="button" data-hold="left" aria-label="Move cannon left">←<small>Left</small></button>
-              <button class="control-button shoot-control" type="button" data-shoot aria-label="Shoot letter">✦<small>Shoot</small></button>
-              <button class="control-button" type="button" data-hold="right" aria-label="Move cannon right">→<small>Right</small></button>
+              <div class="move-controls">
+                <button class="control-button" type="button" data-hold="left" aria-label="Move cannon left">←<small>Left</small></button>
+                <button class="control-button" type="button" data-hold="right" aria-label="Move cannon right">→<small>Right</small></button>
+              </div>
               <button class="shift-toggle" type="button" data-shift aria-pressed="false">⇧ Shift: off</button>
+              <button class="control-button shoot-control" type="button" data-shoot aria-label="Shoot letter">✦<small>Shoot</small></button>
             </div>
             <p class="arcade-instructions">Shoot the next letter of the word. Wrong letters never join your spelling.</p>
           </section>

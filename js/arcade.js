@@ -5,6 +5,7 @@ const WAVE_START_DELAY_MS = 160;
 const WAVE_STAGGER_MS = 70;
 const MAX_PROJECTILES = 3;
 const SHOT_COOLDOWN_MS = 180;
+const PROJECTILE_SPEED = 860;
 import { nextRequiredIndex } from './scheduler.js';
 
 // Distinct letters in random order, so the needed one can appear at any position.
@@ -17,7 +18,7 @@ export function buildLetterWave(required, count, random = Math.random) {
   return letters;
 }
 
-export function createFallingTrackCenters(fieldWidth, safeMargin = 88, minimumGap = 56) {
+export function createFallingTrackCenters(fieldWidth, safeMargin = 34, minimumGap = 56) {
   const usableWidth = Math.max(1, fieldWidth - safeMargin * 2);
   const trackCount = Math.max(2, Math.min(7, Math.floor(usableWidth / minimumGap)));
   return Array.from({ length: trackCount }, (_, index) => safeMargin + ((index + 0.5) * usableWidth) / trackCount);
@@ -52,6 +53,9 @@ export class SpellingArcade {
     root.addEventListener('pointerup', event => this.handlePointerEnd(event));
     root.addEventListener('pointercancel', event => this.handlePointerEnd(event));
     root.addEventListener('lostpointercapture', event => this.handlePointerEnd(event));
+    // Holding a control must never open the browser's long-press menu or start a text selection.
+    root.addEventListener('contextmenu', event => event.preventDefault());
+    root.addEventListener('selectstart', event => event.preventDefault());
     window.addEventListener('blur', () => this.clearInputs());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.clearInputs();
@@ -175,11 +179,12 @@ export class SpellingArcade {
     const directions = [...this.heldPointers.values(), ...(this.keyboardDirection ? [this.keyboardDirection] : [])];
     const horizontal = directions.includes('left') === directions.includes('right') ? 0 : directions.includes('left') ? -1 : 1;
     this.cannonX = Math.max(22, Math.min(this.width - 22, this.cannonX + horizontal * 245 * delta));
-    const speed = Number(this.options.getSettings().arcadeSpeed) || 26;
+    // A taller field gets proportionally faster letters so a round takes about as long on a tablet as on a phone.
+    const speed = (Number(this.options.getSettings().arcadeSpeed) || 26) * Math.max(1, Math.min(2, this.height / 300));
     for (const letter of this.letters) letter.y += speed * delta;
     const now = this.clock;
     this.letters = this.letters.filter(letter => letter.y < this.height - 50 && !(letter.fadeStart !== undefined && now - letter.fadeStart >= FADE_OUT_MS));
-    for (const projectile of this.projectiles) projectile.y -= 460 * delta;
+    for (const projectile of this.projectiles) projectile.y -= PROJECTILE_SPEED * delta;
     this.handleHits();
     this.projectiles = this.projectiles.filter(projectile => projectile.y > -20);
     this.ensureRequiredLetter();

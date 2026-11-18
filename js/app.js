@@ -564,6 +564,7 @@ function openPractice({ speak = false } = {}) {
     arcade.pause();
   }
   document.querySelector('#pause-game').disabled = false;
+  if (encounter.status === 'skipped') return showCorrectSpelling(encounter);
   if (speak || !encounter.heard) speakCurrent({ resume: true });
   else {
     speechReady = true;
@@ -853,6 +854,7 @@ function showAnswerFeedback({ answer, encounter, result }) {
   document.querySelector('#feedback-fix').hidden = false;
   document.querySelector('#feedback-skip').hidden = false;
   document.querySelector('#feedback-target-column').hidden = true;
+  document.querySelector('#feedback-answer').parentElement.hidden = false;
   document.querySelector('.answer-comparison').classList.add('single-answer');
   heading.textContent = result.message;
   icon.textContent = '✦';
@@ -921,16 +923,41 @@ function skipEncounter() {
   askConfirm(`Move on from “${encounter.target}” for now? It can come back as a hidden recall later in this game.`, 'Move on').then(confirmed => {
     if (!confirmed || currentEncounter() !== encounter) return;
     encounter.status = 'skipped';
-    session.index += 1;
     persist();
-    openPractice({ speak: true });
+    showCorrectSpelling(encounter);
   });
+}
+
+// Shown after giving up, so the child always sees the spelling before the next word or the end.
+function showCorrectSpelling(encounter) {
+  audio.stop();
+  arcade.pause();
+  clearTypingAutoSubmit();
+  speakRun += 1;
+  const answerColumn = document.querySelector('#feedback-answer').parentElement;
+  document.querySelector('#view-practice').classList.add('feedback-active');
+  document.querySelector('#feedback-panel').hidden = false;
+  document.querySelector('#celebration-effects').hidden = true;
+  document.querySelector('#feedback-icon').textContent = '✦';
+  document.querySelector('#feedback-heading').textContent = 'Here is the spelling';
+  document.querySelector('#feedback-answer').textContent = encounter.answer;
+  document.querySelector('#feedback-target').textContent = encounter.target;
+  answerColumn.hidden = !encounter.answer;
+  document.querySelector('#feedback-target-column').hidden = false;
+  document.querySelector('.answer-comparison').classList.toggle('single-answer', !encounter.answer);
+  document.querySelector('#feedback-detail').textContent = 'Have a good look at it. This word may come back to practise again.';
+  document.querySelector('#feedback-next').hidden = false;
+  document.querySelector('#feedback-fix').hidden = true;
+  document.querySelector('#feedback-skip').hidden = true;
+  document.querySelector('#prompt-status').textContent = `The spelling is ${encounter.target}`;
+  renderMascots('encouraging');
+  document.querySelector('#feedback-next').focus({ preventScroll: true });
 }
 
 function advanceEncounter() {
   const session = state.activeSession;
   const encounter = currentEncounter();
-  if (!session || !encounter || encounter.status !== 'complete') return;
+  if (!session || !encounter || (encounter.status !== 'complete' && encounter.status !== 'skipped')) return;
   session.index += 1;
   persist();
   openPractice({ speak: true });
@@ -1153,15 +1180,18 @@ function checkSpeech() {
     result.textContent = 'Speech synthesis is not available in this browser.';
     return;
   }
-  const voices = audio.voices.length ? audio.voices : speechSynthesis.getVoices();
-  const voice = audio.selectPreferredVoice({ voiceURI: state.settings.voiceURI });
-  if (!voice) {
-    result.textContent = 'No English voice is available yet. Check device speech settings and try again.';
-    return;
-  }
-  result.textContent = `${voice.name} (${voice.lang})${voice.localService ? ' is marked on-device; still test in aeroplane mode.' : ' may need an internet connection.'}`;
-  result.classList.add('success');
-  audio.speakWord('Monday', 'I will see you on Monday.', state.settings.rate || 0.86).catch(() => {});
+  audio.selectPreferredVoice({ voiceURI: state.settings.voiceURI });
+  result.textContent = 'Testing… you should hear a beep, then the word “Monday”.';
+  audio.playEffect('small', Math.max(0.4, state.settings.effectsVolume), false);
+  const finish = verdict => {
+    result.textContent = `${verdict} ${audio.diagnostics()}`;
+  };
+  audio.speakWord('Monday', 'I will see you on Monday.', state.settings.rate || 0.86)
+    .then(outcome => {
+      finish(outcome?.silent ? 'The browser never confirmed that speech started.' : 'The browser says the word was spoken. If you heard nothing, check the volume and any muted tab.');
+      if (!outcome?.silent) result.classList.add('success');
+    })
+    .catch(error => { if (!error?.superseded) finish(`Speech failed: ${error.message}`); });
 }
 
 function showSpeechCapability() {
