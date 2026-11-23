@@ -1,10 +1,11 @@
-const CACHE_NAME = 'word-ninja-shell-v43';
+const CACHE_NAME = 'word-ninja-shell-v44';
 const APP_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './manifest.webmanifest',
   './js/app.js',
+  './js/updates.js',
   './js/storage.js',
   './js/scheduler.js',
   './js/spelling.js',
@@ -30,7 +31,7 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('message', event => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'SKIP_WAITING') event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('fetch', event => {
@@ -40,10 +41,10 @@ self.addEventListener('fetch', event => {
   if (!requestUrl.href.startsWith(self.registration.scope)) return;
   if (request.mode === 'navigate') {
     // Serve the cached shell so HTML and scripts always come from the same version.
-    event.respondWith(caches.match('./index.html').then(cached => cached || fetch(request)));
+    event.respondWith(caches.match('./index.html', { cacheName: CACHE_NAME }).then(cached => cached || fetch(request)));
     return;
   }
-  event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
+  event.respondWith(caches.match(request, { cacheName: CACHE_NAME }).then(cached => cached || fetch(request).then(response => {
     if (response.ok) {
       const copy = response.clone();
       caches.open(CACHE_NAME).then(cache => cache.put(request, copy));

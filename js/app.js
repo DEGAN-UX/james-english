@@ -6,6 +6,7 @@ import { AudioCoach } from './audio.js';
 import { hapticsSupport, pulse } from './haptics.js';
 import { LetterKeyboard } from './keyboard.js';
 import { SpellingArcade } from './arcade.js';
+import { registerAppUpdates } from './updates.js';
 import { setMascotEquipment, setMascotState, celebrate } from './mascot.js';
 
 const PARENT_PIN = '4441';
@@ -29,7 +30,7 @@ let saveChain = Promise.resolve();
 let saveTimer = 0;
 let saveBlocked = false;
 let speakRun = 0;
-let waitingWorker = null;
+let renderUpdatePrompt;
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 const audio = new AudioCoach(message => {
@@ -121,6 +122,7 @@ function displayView(name) {
   if (name === 'home') renderHome();
   if (name === 'wardrobe') renderWardrobe();
   if (name === 'parent') renderParent();
+  renderUpdatePrompt?.();
   window.scrollTo?.(0, 0);
 }
 
@@ -131,6 +133,7 @@ async function persist({ debounce = false } = {}) {
     saveTimer = window.setTimeout(() => persist(), 250);
     return;
   }
+  window.clearTimeout(saveTimer);
   const snapshot = structuredClone(state);
   saveChain = saveChain.then(async () => {
     try {
@@ -196,7 +199,11 @@ async function initialize() {
   }
   renderHome();
   renderSettings();
-  registerServiceWorker();
+  renderUpdatePrompt = registerAppUpdates({
+    canUpdate: () => !practiceVisible() && !parentUnlocked,
+    save: persist,
+    notify: showMessage
+  });
 }
 
 function renderHome() {
@@ -1253,39 +1260,6 @@ function showSpeechCapability() {
   showMessage(!audio.speechEnabled ? 'This browser does not provide speech synthesis.' : voices.length ? `Speech is available with ${voices.length} installed voice${voices.length === 1 ? '' : 's'}. Offline playback still needs an aeroplane-mode test on the iPhone.` : 'Speech synthesis exists, but no voices have loaded yet. Check the device language and speech settings.', 'notice');
 }
 
-function registerServiceWorker() {
-  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
-  const hadController = Boolean(navigator.serviceWorker.controller);
-  navigator.serviceWorker.register('./sw.js', { scope: './' }).then(registration => {
-        navigator.serviceWorker.ready.then(() => {
-          document.querySelector('#offline-indicator').textContent = 'Offline copy ready';
-        });
-    if (registration.waiting) showUpdate(registration.waiting);
-    registration.addEventListener('updatefound', () => {
-      const worker = registration.installing;
-      worker?.addEventListener('statechange', () => {
-        if (worker.state === 'installed' && navigator.serviceWorker.controller) showUpdate(worker);
-      });
-    });
-  }).catch(() => showMessage('Offline setup did not finish. Keep this page open and check the connection, then reload to retry.', 'error'));
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController) return;
-    if (!practiceVisible() && !parentUnlocked) location.reload();
-    else showMessage('The update is ready. Finish this word before reloading to use it.');
-  });
-}
-
-function showUpdate(worker) {
-  waitingWorker = worker;
-  document.querySelector('#update-banner').hidden = false;
-}
-
-function applyWaitingUpdate() {
-  if (!waitingWorker) return;
-  if (state.activeSession && practiceVisible()) return showMessage('Finish or leave this game before applying the update. Your progress is saved.');
-  waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-}
-
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 }
@@ -1370,7 +1344,6 @@ document.addEventListener('click', event => {
   if (event.target.closest('#test-speech')) return checkSpeech();
   if (event.target.closest('#speech-capability')) return showSpeechCapability();
   if (event.target.closest('#export-backup')) return exportBackup();
-  if (event.target.closest('#apply-update')) return applyWaitingUpdate();
 });
 
 document.querySelector('#leave-game-dialog').addEventListener('cancel', event => {

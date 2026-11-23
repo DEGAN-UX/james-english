@@ -41,7 +41,9 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .icon-button { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; background: white; color: var(--blue-dark); font-size: 23px; font-weight: 800; cursor: pointer; }
 .icon-button:hover { border-color: var(--blue); background: var(--blue-soft); }
 .app-message, .update-banner { width: min(760px, 100%); margin: 12px auto 0; padding: 10px 14px; border: 1px solid #f0c47b; border-radius: 12px; background: #fff8e9; color: #694c10; font-size: 14px; }
-.update-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.update-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.update-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.update-link { padding: 0; border: 0; background: none; color: var(--blue-dark); text-decoration: underline; cursor: pointer; }
 .view { display: none; }
 .view.active { display: block; }
 .home-layout { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(290px, .82fr); gap: clamp(26px, 5vw, 72px); padding: 32px 0 36px; }

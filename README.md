@@ -28,7 +28,7 @@ Copy the project files, including the `js` and `assets` folders, to a static hos
 
 On iPhone, open the HTTPS address in Safari, wait for the page to finish loading, then use Share > Add to Home Screen. Launch Word Ninja from its new home-screen icon once while online so the service worker can cache the app shell. The footer changes to “Offline copy ready” only after the worker is active. The browser may still evict local storage, so keep a parent-area JSON backup.
 
-To apply a published update, open the app while online. When an update is ready, use its update button between games. The app does not force a reload during a spelling encounter. Updates replace only cached app files; they do not delete IndexedDB data.
+Word Ninja checks for an update when opened, when you return to it or go back online, and every five minutes while it is visible. Between games, choose **Update now** to save progress and reload, or **Later** to dismiss the prompt. Select **Update available** in the footer to bring it back. The browser can also apply a downloaded update after every open copy closes. Updates replace cached app files and keep IndexedDB data.
 
 ## Parent Setup And Backups
 

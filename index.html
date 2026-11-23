@@ -19,7 +19,13 @@
     </header>
 
     <div id="app-message" class="app-message" role="status" aria-live="polite" hidden></div>
-    <div id="update-banner" class="update-banner" hidden><span>A Word Ninja update is ready.</span><button class="button button-small" id="apply-update" type="button">Update between games</button></div>
+    <div id="update-banner" class="update-banner" hidden>
+      <span role="status">A Word Ninja update is ready.</span>
+      <div class="update-actions">
+        <button class="button button-small button-primary" id="apply-update" type="button">Update now</button>
+        <button class="button button-small button-secondary" id="defer-update" type="button">Later</button>
+      </div>
+    </div>
     <div id="celebration-effects" class="celebration-effects" aria-hidden="true" hidden>
       <span class="celebration-bolt">⚡</span>
       <span class="glitter glitter-one">✦</span><span class="glitter glitter-two">★</span>
@@ -136,7 +142,7 @@
         <div class="wardrobe-layout"><div class="wardrobe-preview"><div class="mascot" data-mood="idle" role="img" aria-label="Nix wearing your chosen outfit"><span class="mascot-trail"></span><span class="mascot-scarf"></span><span class="mascot-helmet"></span><span class="mascot-headband"></span><span class="mascot-shades"></span><span class="mascot-face"><i></i><i></i></span><span class="mascot-body"></span><span class="mascot-feet"></span></div><p id="equipped-label">Nix’s outfit</p></div><div class="wardrobe-categories" id="accessory-grid"></div></div>
       </section>
     </main>
-    <footer class="app-footer"><span>Word Ninja <span id="save-indicator" aria-live="polite"></span></span><span id="offline-indicator">Offline setup not confirmed</span></footer>
+    <footer class="app-footer"><span>Word Ninja <span id="save-indicator" aria-live="polite"></span></span><button class="update-link" id="show-update" type="button" hidden>Update available</button><span id="offline-indicator">Offline setup not confirmed</span></footer>
   </div>
   <dialog id="leave-game-dialog" class="leave-dialog" aria-labelledby="leave-dialog-title">
     <button class="icon-button leave-dialog-close" type="button" data-leave-action="stay" aria-label="Keep playing">×</button>
