@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { damerauLevenshtein, classifyAnswer, canAutoConfirmAnswer, alignLetters, validateWord } from '../js/spelling.js';
-import { createSessionPlan, nextRequiredIndex, isNextRequiredLetter } from '../js/scheduler.js';
+import { createSessionPlan, nextRequiredIndex, isNextRequiredLetter, typedWholeSet } from '../js/scheduler.js';
 import { ACCESSORIES, DEFAULT_EQUIPMENT, WARDROBE_SLOTS, rewardForEncounter, unlockForStars } from '../js/rewards.js';
 import { createInitialState, validateBackup } from '../js/storage.js';
 import { createFallingTrackCenters } from '../js/arcade.js';
@@ -49,6 +49,34 @@ test('session includes every current word and carries review budget only with el
   const second = createSessionPlan({ set, words, stats: { 'old:typing': { firstMisses: 1, attempts: 2, consecutiveIndependentSessions: 0 } }, reviewBudget: 0.7, mode: 'typing', random: () => 0.3 });
   assert.equal(second.queue.filter(item => item.kind === 'weekly').length, 9);
   assert.equal(second.queue.filter(item => item.kind === 'review').length, 1);
+});
+
+test('arcade rounds cover only the earned list and preserve the keyboard review budget', () => {
+  const set = { id: 'week', wordIds: ['new'] };
+  const words = [{ id: 'new', text: 'new' }, { id: 'old', text: 'old' }];
+  const stats = { 'old:arcade': { firstMisses: 2, attempts: 3 } };
+  const plan = createSessionPlan({ set, words, stats, reviewBudget: 0.95, mode: 'arcade' });
+  assert.deepEqual(plan.queue.map(item => item.wordId), ['new']);
+  assert.equal(plan.nextBudget, 0.95);
+});
+
+test('every word needs a correct hidden keyboard answer in one round to unlock the arcade', () => {
+  const set = { id: 'week', wordIds: ['a', 'b'] };
+  const typed = { mode: 'typing', correct: true, answerRevealed: false };
+  const session = { setId: set.id, mode: 'typing', queue: [
+    { kind: 'weekly', wordId: 'b', submissions: [
+      { ...typed, correct: false },
+      { ...typed, answerRevealed: true },
+      { ...typed, mode: 'arcade' }
+    ] },
+    { kind: 'weekly', wordId: 'a', submissions: [typed] },
+    { kind: 'review', wordId: 'old', submissions: [] }
+  ] };
+  assert.equal(typedWholeSet(session, set), false);
+  session.queue.push({ kind: 'later-recall', wordId: 'b', submissions: [typed] });
+  assert.equal(typedWholeSet(session, set), true);
+  assert.equal(typedWholeSet(session, { ...set, id: 'another-week' }), false);
+  assert.equal(typedWholeSet(session, { ...set, wordIds: ['a', 'c'] }), false);
 });
 
 test('arcade supply follows the longest matching prefix for recovery', () => {

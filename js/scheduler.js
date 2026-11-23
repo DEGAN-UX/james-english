@@ -6,6 +6,10 @@ export function createSessionPlan({ set, words, stats, reviewBudget, random = Ma
     [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
   }
 
+  const queue = shuffled.map(word => ({ wordId: word.id, target: word.text, kind: 'weekly' }));
+  const plan = { queue, plannedAt: new Date().toISOString(), mode, setId: set.id };
+  if (mode === 'arcade') return { ...plan, nextBudget: reviewBudget };
+
   const eligible = words.filter(word => {
     if (set.wordIds.includes(word.id)) return false;
     const evidence = stats[`${word.id}:${mode}`];
@@ -26,13 +30,30 @@ export function createSessionPlan({ set, words, stats, reviewBudget, random = Ma
   } else {
     nextBudget = 0;
   }
-  const queue = shuffled.map(word => ({ wordId: word.id, target: word.text, kind: 'weekly' }));
   const reviews = eligible.slice(0, reviewCount).map(word => ({ wordId: word.id, target: word.text, kind: 'review' }));
   for (let index = 0; index < reviews.length; index += 1) {
     const position = Math.min(queue.length - 1, Math.floor(((index + 1) * queue.length) / (reviews.length + 1)));
     queue.splice(position, 0, reviews[index]);
   }
-  return { queue, nextBudget, plannedAt: new Date().toISOString(), mode, setId: set.id };
+  return { ...plan, nextBudget };
+}
+
+export function wordSetKey(wordIds) {
+  return JSON.stringify([...wordIds].sort());
+}
+
+export function sessionWordSetKey(session) {
+  return wordSetKey(session.queue.filter(item => item.kind === 'weekly').map(item => item.wordId));
+}
+
+export function typedWholeSet(session, set) {
+  if (session.mode !== 'typing' || session.setId !== set.id || !set.wordIds.length ||
+      sessionWordSetKey(session) !== wordSetKey(set.wordIds)) return false;
+
+  const typedWords = new Set(session.queue.filter(item => item.submissions.some(attempt =>
+    attempt.mode === 'typing' && attempt.correct && !attempt.answerRevealed
+  )).map(item => item.wordId));
+  return set.wordIds.every(id => typedWords.has(id));
 }
 
 // Arcade difficulty per word: 6 letters on screen the first time, 7 after a good round, 8 after another.

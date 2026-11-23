@@ -1,6 +1,6 @@
 import { StateStore, createInitialState, validateBackup } from './storage.js';
 import { alignLetters, canAutoConfirmAnswer, classifyAnswer, validateWord } from './spelling.js';
-import { arcadeLetterCount, createSessionPlan, nextArcadeLevel } from './scheduler.js';
+import { arcadeLetterCount, createSessionPlan, nextArcadeLevel, sessionWordSetKey, typedWholeSet, wordSetKey } from './scheduler.js';
 import { ACCESSORIES, DEFAULT_EQUIPMENT, WARDROBE_SLOTS, rewardForEncounter, unlockForStars } from './rewards.js';
 import { AudioCoach } from './audio.js';
 import { hapticsSupport, pulse } from './haptics.js';
@@ -45,6 +45,33 @@ function makeId(prefix) {
 
 function currentSet() {
   return state.sets.find(set => set.current && !set.archived) || null;
+}
+
+function arcadeEnabled() {
+  return state.settings.arcadeEnabled !== false;
+}
+
+function canStartArcade(set) {
+  return arcadeEnabled() && Boolean(set?.wordIds.length && set.arcadePass === wordSetKey(set.wordIds));
+}
+
+function canResumeSession(session) {
+  if (session.mode !== 'arcade') return true;
+  if (!arcadeEnabled()) return false;
+  const set = state.sets.find(item => item.id === session.setId && !item.archived);
+  if (!set?.wordIds.length) return false;
+  const setKey = wordSetKey(set.wordIds);
+  // A saved round from before arcade passes can use the next pass for that same list.
+  return session.arcadeSetKey === setKey ||
+    (!session.arcadeSetKey && canStartArcade(set) && sessionWordSetKey(session) === setKey);
+}
+
+function grantArcadePass(session) {
+  if (session.earnedArcadePass || session.mode !== 'typing') return;
+  const set = state.sets.find(item => item.id === session.setId && !item.archived);
+  if (!set || !typedWholeSet(session, set)) return;
+  set.arcadePass = wordSetKey(set.wordIds);
+  session.earnedArcadePass = true;
 }
 
 function currentEncounter() {
@@ -182,6 +209,13 @@ function renderHome() {
   const subtitle = document.querySelector('#home-subtitle');
   const resume = document.querySelector('#resume-session');
   document.querySelector('#star-count').textContent = state.stars || 0;
+  const arcadeButton = document.querySelector('.mode-arcade');
+  arcadeButton.hidden = !arcadeEnabled() || !set?.wordIds.length;
+  arcadeButton.disabled = !canStartArcade(set);
+  arcadeButton.querySelector('small').textContent = arcadeButton.disabled
+    ? 'Spell every word with the keyboard to unlock one round'
+    : 'One arcade round unlocked';
+  arcadeButton.querySelector('.mode-arrow').textContent = arcadeButton.disabled ? '🔒' : '→';
   preview.replaceChildren();
   if (!set || !set.wordIds.length) {
     summary.textContent = 'No words yet. Ask a parent to add this week’s list.';
@@ -194,7 +228,7 @@ function renderHome() {
     summary.textContent = `${set.title}${set.testDate ? ` · test ${formatDate(set.testDate)}` : ''} · ${words.length} words`;
     label.textContent = `Weekly words: ${practised} of ${words.length} practised`;
     bar.style.width = `${words.length ? (practised / words.length) * 100 : 0}%`;
-    subtitle.textContent = 'Pick a way to practise. Both games have your whole list.';
+    subtitle.textContent = 'Practise this week’s spelling words.';
     words.slice(0, 8).forEach(word => {
       const item = document.createElement('li');
       item.textContent = word.text;
@@ -206,10 +240,10 @@ function renderHome() {
       preview.append(more);
     }
   }
-  const savedGames = [state.activeSession, ...(state.pausedSessions || [])].filter(Boolean);
+  const savedGames = [state.activeSession, ...(state.pausedSessions || [])].filter(session => session && canResumeSession(session));
   resume.hidden = savedGames.length === 0;
   resume.textContent = savedGames.length ? `Continue your saved game${savedGames.length > 1 ? ` (${savedGames.length})` : ''} →` : '';
-  document.querySelector('#saved-games').innerHTML = (state.pausedSessions || []).map(session => {
+  document.querySelector('#saved-games').innerHTML = savedGames.filter(session => session !== state.activeSession).map(session => {
     const savedSet = state.sets.find(item => item.id === session.setId);
     const label = session.mode === 'typing' ? 'Type the words' : 'Spelling Arcade';
     return `<button class="saved-game-link" type="button" data-resume-session="${session.id}">Resume ${escapeHtml(savedSet?.title || 'saved list')} · ${label}</button>`;
@@ -306,6 +340,9 @@ function renderSettings() {
   setValue('#effects-volume', settings.effectsVolume ?? 0.4);
   setChecked('#effects-muted', settings.effectsMuted);
   setChecked('#reduced-motion', settings.reducedMotion);
+  setChecked('#arcade-enabled', arcadeEnabled());
+  document.querySelector('#arcade-speed').disabled = !arcadeEnabled();
+  document.querySelector('#arcade-max-letters').disabled = !arcadeEnabled();
   setChecked('#vibration', settings.vibration !== false);
   document.querySelector('#vibration-note').textContent = {
     vibrate: 'Buzzes on correct answers and cannon shots.',
@@ -409,6 +446,7 @@ function saveSet(event) {
   if (oldSet) {
     oldSet.title = title;
     oldSet.testDate = document.querySelector('#test-date').value;
+    if (wordSetKey(oldSet.wordIds) !== wordSetKey(wordIds)) delete oldSet.arcadePass;
     oldSet.wordIds = wordIds;
   } else {
     const newSet = { id: makeId('set'), title, testDate: document.querySelector('#test-date').value, wordIds, current: !currentSet(), archived: false, createdAt: new Date().toISOString() };
@@ -473,11 +511,13 @@ function beginSession(mode) {
     showMessage('There is no weekly word list yet. Ask a parent to add one.');
     return;
   }
+  if (mode === 'arcade' && !canStartArcade(set)) return;
   if (state.activeSession) {
     pauseActiveSession();
     showMessage('Your earlier game is saved. Use “Continue your saved game” to return to it.');
   }
   createSession(set, mode);
+  if (mode === 'arcade') useArcadePass(state.activeSession, set);
   persist();
   openPractice({ speak: true });
 }
@@ -502,15 +542,25 @@ function createSession(set, mode) {
   state.sessions.push({ id: state.activeSession.id, setId: set.id, mode, startedAt: state.activeSession.startedAt, status: 'active' });
 }
 
-function resumeSavedSession(sessionId = state.activeSession?.id || state.pausedSessions?.[0]?.id) {
-  if (!sessionId) return;
-  if (state.activeSession?.id === sessionId) return openPractice({ speak: !currentEncounter()?.heard });
-  if (state.activeSession) pauseActiveSession();
-  const savedIndex = (state.pausedSessions || []).findIndex(session => session.id === sessionId);
-  if (savedIndex < 0) return;
-  state.activeSession = state.pausedSessions.splice(savedIndex, 1)[0];
-  const record = state.sessions.find(session => session.id === state.activeSession.id);
-  if (record) Object.assign(record, { status: 'active', mode: state.activeSession.mode });
+function useArcadePass(session, set) {
+  session.arcadeSetKey = set.arcadePass;
+  delete set.arcadePass;
+}
+
+function resumeSavedSession(sessionId) {
+  const savedGames = [state.activeSession, ...(state.pausedSessions || [])];
+  const session = savedGames.find(item => item && (!sessionId || item.id === sessionId) && canResumeSession(item));
+  if (!session) return;
+  if (session.mode === 'arcade' && !session.arcadeSetKey) {
+    useArcadePass(session, state.sets.find(set => set.id === session.setId));
+  }
+  if (session !== state.activeSession) {
+    if (state.activeSession) pauseActiveSession();
+    state.pausedSessions = state.pausedSessions.filter(item => item !== session);
+    state.activeSession = session;
+    const record = state.sessions.find(item => item.id === session.id);
+    if (record) Object.assign(record, { status: 'active', mode: session.mode });
+  }
   persist();
   openPractice({ speak: !currentEncounter()?.heard });
 }
@@ -524,6 +574,7 @@ function openPractice({ speak = false } = {}) {
   window.clearTimeout(arcadeAdvanceTimer);
   pendingCorrectAdvance = false;
   const session = state.activeSession;
+  if (session?.mode === 'arcade' && (!session.arcadeSetKey || !canResumeSession(session))) return displayView('home');
   const encounter = currentEncounter();
   if (!session || !encounter) return finishSession();
   if (encounter.status === 'complete') {
@@ -748,6 +799,7 @@ async function submitAnswer() {
   }
   const reward = awardEncounter(session, encounter, feedbackKind);
   session.starsEarned += reward;
+  grantArcadePass(session);
   persist();
   celebrateCorrectAnswer(feedbackKind, reward);
 }
@@ -980,8 +1032,11 @@ async function finishSession() {
   }
   const record = state.sessions.find(item => item.id === session.id);
   if (record) Object.assign(record, { status: 'complete', completedAt: new Date().toISOString(), independentCount: session.independentCount, assistedCount: session.assistedCount, laterCount: session.laterCount, starsEarned: session.starsEarned });
+  grantArcadePass(session);
   state.activeSession = null;
   persist();
+  const set = currentSet();
+  document.querySelector('#results-arcade').hidden = session.mode !== 'typing' || session.setId !== set?.id || !canStartArcade(set);
   document.querySelector('#results-stars').textContent = `★ +${session.starsEarned} stars${completionBonus ? ' · includes your dojo bonus' : ''}`;
   renderMascots('celebrating-big');
   audio.playEffect('big', state.settings.effectsVolume, state.settings.effectsMuted);
@@ -1009,8 +1064,10 @@ function openLeaveDialog() {
     advanceEncounter();
     if (!state.activeSession) return;
   }
-  const otherMode = state.activeSession.mode === 'typing' ? 'Spelling Arcade' : 'Type the words';
-  document.querySelector('#switch-game-style').textContent = `Switch to ${otherMode}`;
+  const isTyping = state.activeSession.mode === 'typing';
+  const switchButton = document.querySelector('#switch-game-style');
+  switchButton.hidden = isTyping && !canStartArcade(currentSet());
+  switchButton.textContent = isTyping ? 'Start your arcade round' : 'Start a keyboard round';
   document.querySelector('#leave-game-dialog').showModal();
   arcade.pause();
   audio.stop();
@@ -1025,12 +1082,7 @@ function handleLeaveAction(action) {
   }
   if (action === 'switch') {
     if (!state.activeSession) return;
-    state.activeSession.mode = state.activeSession.mode === 'typing' ? 'arcade' : 'typing';
-    state.activeSession.streakByMode ||= {};
-    const sessionRecord = state.sessions.find(session => session.id === state.activeSession.id);
-    if (sessionRecord) sessionRecord.mode = state.activeSession.mode;
-    persist();
-    return openPractice({ speak: !currentEncounter()?.heard });
+    return beginSession(state.activeSession.mode === 'typing' ? 'arcade' : 'typing');
   }
   if (action === 'words') {
     arcade.pause();
@@ -1354,6 +1406,11 @@ document.querySelector('#vibration').addEventListener('change', event => {
 document.querySelector('#reduced-motion').addEventListener('change', event => {
   updatePreference('reducedMotion', event.target.checked);
   renderMascots('idle');
+});
+document.querySelector('#arcade-enabled').addEventListener('change', event => {
+  if (!parentUnlocked) return;
+  updatePreference('arcadeEnabled', event.target.checked);
+  renderSettings();
 });
 document.querySelector('#arcade-speed').addEventListener('input', event => {
   state.settings.arcadeSpeed = Number(event.target.value);
